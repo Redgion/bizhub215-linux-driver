@@ -1,0 +1,22 @@
+name: Printer or installation problem
+description: Report a reproducible problem without private documents or credentials.
+body:
+  - type: input
+    id: version
+    attributes:
+      label: Driver version
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: Distribution, architecture and CUPS version
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: Expected result, actual physical result and error text
+      description: Remove printer IP, usernames, document contents and credentials from logs.
+    validations:
+      required: true

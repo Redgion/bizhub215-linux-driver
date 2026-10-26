@@ -1,0 +1,44 @@
+*PPD-Adobe: "4.3"
+*FormatVersion: "4.3"
+*FileVersion: "0.2"
+*LanguageVersion: English
+*LanguageEncoding: ISOLatin1
+*PCFileName: "KM215.PPD"
+*Manufacturer: "Konica Minolta"
+*Product: "(bizhub 215)"
+*ModelName: "Konica Minolta bizhub 215 Custom GDI"
+*ShortNickName: "bizhub 215 Custom"
+*NickName: "Konica Minolta bizhub 215 Custom GDI 0.2"
+*PSVersion: "(3010.000) 0"
+*LanguageLevel: "3"
+*ColorDevice: False
+*DefaultColorSpace: Gray
+*FileSystem: False
+*Throughput: "21"
+*cupsVersion: 2.4
+*cupsManualCopies: True
+*cupsFilter: "application/pdf 0 km215-pdftogdi"
+*OpenUI *PageSize/Page Size: PickOne
+*OrderDependency: 10 AnySetup *PageSize
+*DefaultPageSize: A4
+*PageSize A4/A4: "<</PageSize[595.2756 841.8898]>>setpagedevice"
+*CloseUI: *PageSize
+*OpenUI *PageRegion/Page Region: PickOne
+*OrderDependency: 10 AnySetup *PageRegion
+*DefaultPageRegion: A4
+*PageRegion A4/A4: "<</PageSize[595.2756 841.8898]>>setpagedevice"
+*CloseUI: *PageRegion
+*DefaultImageableArea: A4
+*ImageableArea A4: "12 12 583.2756 829.8898"
+*DefaultPaperDimension: A4
+*PaperDimension A4: "595.2756 841.8898"
+*OpenUI *Resolution/Resolution: PickOne
+*OrderDependency: 20 AnySetup *Resolution
+*DefaultResolution: 600dpi
+*Resolution 600dpi/600 dpi: "<</HWResolution[600 600]>>setpagedevice"
+*CloseUI: *Resolution
+*OpenUI *Duplex/Two-Sided: PickOne
+*OrderDependency: 20 AnySetup *Duplex
+*DefaultDuplex: None
+*Duplex None/Off: "<</Duplex false>>setpagedevice"
+*CloseUI: *Duplex

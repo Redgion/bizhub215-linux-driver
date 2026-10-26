@@ -1,0 +1,13 @@
+bizhub215-linux-driver, version 0.3.1
+Copyright (C) 2026 bizhub215-linux-driver contributors
+
+This project is free software under GPL-2.0-or-later. It is supplied without
+warranty. Full license text is in LICENSE.
+
+The native helper dynamically links to JBIG-KIT, copyright Markus Kuhn,
+provided separately by your distribution under GPL-2.0-or-later.
+JBIG-KIT source and license: https://www.cl.cam.ac.uk/~mgk25/jbigkit/
+
+Konica Minolta and bizhub are trademarks of their respective owners.
+This project is not affiliated with or endorsed by Konica Minolta.
+No proprietary Windows driver binaries or Windows source code are included.
