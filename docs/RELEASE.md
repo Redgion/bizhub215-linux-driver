@@ -1,34 +1,32 @@
-Experimental Linux GDI/JBIG printing implementation, GPL-2.0-or-later.
+Native network scanning for Konica Minolta bizhub 215, plus the existing
+GDI/JBIG CUPS printing filter. No Windows DLLs or Wine are required.
 
-Security and privacy update:
-- CUPS identity and document title are not placed into the printer stream;
-  the protocol uses the constant `USERNAME=linux`.
-- PDF pages stream through bounded memory instead of accumulating raster files.
-- Renderer resource limits, a document deadline, job-size checks and cancellation cleanup.
-- Installed helper is encode-only; the guarded decoder stays in local tests.
-- Stronger source installation checks and exclusive writes.
-- Explicit licensing/provenance notes; this is not vendor legal approval.
+Verified on Fedora 44 KDE: two real flatbed A4 scans at 150 dpi, Gray and RGB,
+and device/options visible in Skanpage. Images and device logs are private.
+A3, 300 dpi, ADF, duplex and USB scanning are not hardware verified.
 
-Download a source archive, unpack it, and run as a regular user:
+Download the source archive, unpack, and run as your regular desktop user:
 
 ```sh
-sh install.sh --setup --printer 192.0.2.10
+sh install.sh --setup-scanner --printer 192.0.2.10
 ```
 
-Replace the example address with your printer address. Dependencies, system
-installation and queue creation require confirmation. No test print is sent.
-RPM is for Fedora 44 x86_64; DEB is for Ubuntu 24.04 amd64. Other Linux systems
-should build from source against their own distribution libraries.
+Replace the example address with your MFP IPv4 address. Install a C compiler,
+make, patch, pkg-config, SANE CLI (scanimage), and Skanpage or simple-scan from
+your distribution first. Setup downloads SHA-256-pinned official SANE source,
+builds an isolated backend, and offers a private user profile/menu shortcut.
+No CUPS changes or automatic scans occur. See docs/SCANNER.md.
 
-16 local tests pass. Compression of the hardware-confirmed single-page reference
-remains identical; changing to the anonymous protocol identity has not been
-physically retested. No new hardware test is claimed for this release.
+For printing, use `sh install.sh --setup --printer 192.0.2.10` separately.
+Keep an existing working printer installation if only adding the scanner.
+RPM packages target Fedora 44 x86_64; DEB targets Ubuntu 24.04 amd64. Other
+systems should build from source against their own distribution libraries.
+A successful CUPS job is not evidence of physical output.
 
-Supported scope: CUPS 2.x, A4 monochrome, 600 dpi, portrait, simplex, one copy.
-Input PDF and encoded job each up to 64 MiB; up to 200 pages with a 60-second
-processing deadline. Performance limits may reject otherwise valid large jobs.
-Multi-page framing is locally tested, not separately confirmed on two physical sheets.
-
-SHA256SUMS covers the attached source archives and native packages. Windows
-executables, private development files and test decoder binaries are not shipped
-as runtime components. See docs/SECURITY.md and docs/LICENSING.md for limits.
+Security checks reject invalid/oversized image dimensions and inconsistent
+image-block lengths, bound image allocation, and handle failed socket writes.
+Native printer/scanner services lack transport encryption; use a trusted LAN.
+No telemetry or uploaded documents; no private scan fixtures or vendor binaries
+are distributed. GPL licensing/provenance notices remain in LICENSE and NOTICE.
+Checksums cover all attached payloads; checksums are not an independent signature.
+Passing tests is not a guarantee that the code has no vulnerabilities.

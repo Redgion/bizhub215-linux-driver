@@ -9,7 +9,7 @@ import tarfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-PUBLIC_DIRS = ("src", "tools", "cups", "tests", "docs", ".github")
+PUBLIC_DIRS = ("src", "tools", "cups", "scanner", "tests", "docs", ".github")
 PUBLIC_FILES = ("README.md", "LICENSE", "NOTICE", "VERSION", "CHANGELOG.md", ".gitignore",
                 "Makefile", "install.sh", "uninstall.sh")
 

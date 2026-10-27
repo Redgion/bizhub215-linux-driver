@@ -1,83 +1,28 @@
 name: Native release packages
-on:
-  release:
-    types: [published]
-  workflow_dispatch:
-    inputs:
-      cleanup_obsolete:
-        description: Remove CI metadata from superseded history
-        type: boolean
-        default: false
-  workflow_run:
-    workflows: [Privacy repair and hardened release]
-    types: [completed]
+on: [workflow_dispatch]
 permissions:
-  contents: write
+  contents: read
 jobs:
   deb:
-    if: github.event_name != 'workflow_run' && !inputs.cleanup_obsolete
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ github.event.release.tag_name || github.ref }}
+          ref: ${{ github.ref }}
       - run: sudo apt-get update && sudo apt-get install -y build-essential python3 ghostscript cups libcups2-dev libjbig-dev
       - run: python3 tools/build_native.py deb
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: ubuntu24.04-deb
           path: dist/*.deb
-      - if: github.event_name == 'release'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" dist/*.deb
   rpm:
-    if: github.event_name != 'workflow_run' && !inputs.cleanup_obsolete
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
-          ref: ${{ github.event.release.tag_name || github.ref }}
-      - run: docker run --rm -v "$PWD:/src" -w /src fedora:44 bash -c 'dnf install -y gcc make python3 ghostscript cups cups-devel jbigkit-devel rpm-build && python3 tools/build_native.py rpm'
+          ref: ${{ github.ref }}
+      - run: docker run --rm -v "$PWD:/src" -w /src fedora:44 bash -c 'dnf install -y gcc make python3 ghostscript cups cups-devel jbigkit-devel rpm-build && useradd -u 1001 -m builder && chown -R builder:builder /src && runuser -u builder -- python3 tools/build_native.py rpm'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: fedora44-rpm
           path: dist/*.rpm
-      - if: github.event_name == 'release'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" dist/*.rpm
-  cleanup:
-    if: (github.event_name == 'workflow_dispatch' && inputs.cleanup_obsolete) || (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.head_repository.full_name == github.repository)
-    runs-on: ubuntu-24.04
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Remove CI metadata attached to obsolete history
-        env:
-          GH_TOKEN: ${{ github.token }}
-          CLEAN_SHA: ${{ github.sha }}
-        run: |
-          set -eu
-          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs?per_page=100" --jq ".workflow_runs[] | select(.id != $GITHUB_RUN_ID and .head_sha != \"$CLEAN_SHA\") | .id" > /tmp/obsolete-runs
-          while read -r run; do
-            # Give the dispatching repair run time to finish its final cleanup.
-            for attempt in $(seq 1 12); do
-              status=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" --jq .status)
-              [ "$status" = completed ] && break
-              sleep 5
-            done
-            if [ "$status" != completed ]; then
-              gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$run/cancel"
-              for attempt in $(seq 1 12); do
-                status=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run" --jq .status)
-                [ "$status" = completed ] && break
-                sleep 5
-              done
-            fi
-            [ "$status" = completed ]
-            gh api --method DELETE "repos/$GITHUB_REPOSITORY/actions/runs/$run"
-          done < /tmp/obsolete-runs

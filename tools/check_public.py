@@ -21,8 +21,10 @@ def findings(data):
             address = ipaddress.ip_address(candidate)
         except ValueError:
             continue
-        if address.is_private and not any(address in net for net in EXAMPLES):
+        if address.is_private and not address.is_loopback and not any(address in net for net in EXAMPLES):
             problems.add("non-example private address")
+    if re.search(r"(?i)(?<![0-9a-f])(?:[0-9a-f]{2}:){5}[0-9a-f]{2}(?![0-9a-f])", text):
+        problems.add("hardware address requires manual review")
     for email in re.findall(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", text):
         domain = email.rsplit("@", 1)[1].lower()
         if domain not in {"gnu.org", "fsf.org", "github.com", "users.noreply.github.com", "example.invalid"}:

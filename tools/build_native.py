@@ -16,11 +16,17 @@ def payload(stage):
         "build/km215-jbig": "usr/lib/bizhub215/build/km215-jbig",
         "tools/km215_job.py": "usr/lib/bizhub215/tools/km215_job.py",
         "tools/km215_cups.py": "usr/lib/bizhub215/tools/km215_cups.py",
+        "tools/build_scanner.py": "usr/lib/bizhub215/tools/build_scanner.py",
+        "tools/km215_scan.py": "usr/lib/bizhub215/tools/km215_scan.py",
+        "tools/manage_install.py": "usr/lib/bizhub215/tools/manage_install.py",
+        "scanner/sane-1.4.0-bizhub215.patch": "usr/lib/bizhub215/scanner/sane-1.4.0-bizhub215.patch",
+        "VERSION": "usr/lib/bizhub215/VERSION",
         "cups/km215-pdftogdi": "usr/lib/cups/filter/km215-pdftogdi",
         "cups/KonicaMinolta-bizhub215-custom.ppd": "usr/share/cups/model/KonicaMinolta-bizhub215-custom.ppd",
         "LICENSE": "usr/share/doc/bizhub215-linux-driver/LICENSE",
         "NOTICE": "usr/share/doc/bizhub215-linux-driver/NOTICE",
         "README.md": "usr/share/doc/bizhub215-linux-driver/README.md",
+        "docs/SCANNER.md": "usr/share/doc/bizhub215-linux-driver/SCANNER.md",
     }
     for src, dst in mapping.items():
         dest = stage / dst
@@ -71,7 +77,9 @@ def main():
             subprocess.run(["python3", "tools/build_release.py"], cwd=ROOT, check=True)
             shutil.copyfile(dist / f"{NAME}-{version}.tar.gz", top / "SOURCES" / f"{NAME}-{version}.tar.gz")
             spec = top / "SPECS/driver.spec"
-            spec.write_text(f"""Name: {NAME}
+            spec.write_text(f"""%global debug_package %{{nil}}
+%global _build_id_links none
+Name: {NAME}
 Version: {version}
 Release: 1%{{?dist}}
 Summary: Unofficial GDI/JBIG driver for Konica Minolta bizhub 215
@@ -88,9 +96,12 @@ A4 monochrome CUPS 2.x PDF filter. No automatic queues or print jobs.
 %check
 make test
 %install
-mkdir -p %{{buildroot}}/usr/lib/bizhub215/build %{{buildroot}}/usr/lib/bizhub215/tools %{{buildroot}}/usr/lib/cups/filter %{{buildroot}}/usr/share/cups/model
+mkdir -p %{{buildroot}}/usr/lib/bizhub215/build %{{buildroot}}/usr/lib/bizhub215/tools %{{buildroot}}/usr/lib/bizhub215/scanner %{{buildroot}}/usr/lib/cups/filter %{{buildroot}}/usr/share/cups/model
 install -m755 build/km215-jbig %{{buildroot}}/usr/lib/bizhub215/build/
 install -m644 tools/km215_job.py tools/km215_cups.py %{{buildroot}}/usr/lib/bizhub215/tools/
+install -m644 tools/build_scanner.py tools/km215_scan.py tools/manage_install.py %{{buildroot}}/usr/lib/bizhub215/tools/
+install -m644 scanner/sane-1.4.0-bizhub215.patch %{{buildroot}}/usr/lib/bizhub215/scanner/
+install -m644 VERSION %{{buildroot}}/usr/lib/bizhub215/
 sed 's@/usr/local/lib/bizhub215@/usr/lib/bizhub215@g' cups/km215-pdftogdi > %{{buildroot}}/usr/lib/cups/filter/km215-pdftogdi
 chmod 755 %{{buildroot}}/usr/lib/cups/filter/km215-pdftogdi
 install -m644 cups/KonicaMinolta-bizhub215-custom.ppd %{{buildroot}}/usr/share/cups/model/
@@ -101,12 +112,12 @@ if [ -e /usr/lib/cups/filter/km215-pdftogdi ] && ! rpm -q {NAME} >/dev/null 2>&1
 fi
 %files
 %license LICENSE
-%doc README.md NOTICE
+%doc README.md NOTICE docs/SCANNER.md
 /usr/lib/bizhub215
 /usr/lib/cups/filter/km215-pdftogdi
 /usr/share/cups/model/KonicaMinolta-bizhub215-custom.ppd
 """)
-            subprocess.run(["rpmbuild", "-ba", "--define", f"_topdir {top}", str(spec)], check=True)
+            subprocess.run(["rpmbuild", "-ba", "--define", f"_topdir {top}", "--define", "_buildhost builder.invalid", str(spec)], check=True)
             for path in [*(top / "RPMS").rglob("*.rpm"), *(top / "SRPMS").glob("*.rpm")]:
                 shutil.copyfile(path, dist / path.name)
     print("Built native package(s) in dist; no system files or queues changed.")

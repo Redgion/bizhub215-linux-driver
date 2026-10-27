@@ -4,7 +4,7 @@
 [![Release](https://img.shields.io/github/v/release/Redgion/bizhub215-linux-driver)](https://github.com/Redgion/bizhub215-linux-driver/releases/latest)
 [![License: GPL v2+](https://img.shields.io/badge/license-GPL--2.0--or--later-blue)](LICENSE)
 
-**Печать на Konica Minolta bizhub 215 из Linux, без Windows и Wine.**
+**Печать и сканирование на Konica Minolta bizhub 215 из Linux, без Windows и Wine.**
 
 Открытый CUPS-фильтр для GDI/JBIG-печати по сети. Реальная печать и работа
 через KDE/CUPS подтверждены на Fedora 44 x86_64. Неофициальный проект,
@@ -13,7 +13,7 @@
 ## Скачать и установить
 
 1. Откройте [последний релиз](https://github.com/Redgion/bizhub215-linux-driver/releases/latest).
-2. Скачайте `bizhub215-linux-driver-0.3.1.tar.gz` или `.zip`, распакуйте.
+2. Скачайте `bizhub215-linux-driver-0.4.0.tar.gz` или `.zip`, распакуйте.
 3. В папке проекта выполните **обычным пользователем**:
 
 ```sh
@@ -58,7 +58,7 @@ make и JBIG-KIT с заголовками**. CUPS 3, Windows, macOS и неиз
   физических листов пока нет.
 - Дуплекс, несколько копий, диапазон страниц, N-up и принудительный альбомный
   режим пока отвергаются с понятной ошибкой.
-- Сетевой RAW TCP 9100. USB, сканер и другие модели не проверены.
+- Печать по сетевому RAW TCP 9100. USB и другие модели не проверены.
 - Источник бумаги выбирается автоматически; точные аппаратные поля не измерены.
 
 Принтер получает постоянное `USERNAME=linux`. Имя пользователя CUPS,
@@ -75,6 +75,25 @@ python3 tools/km215_job.py --pdf document.pdf document.prn
 Эта команда создаёт файл и ничего не отправляет на принтер. Существующий
 выходной файл не перезаписывается. Успешный статус CUPS/TCP сам по себе
 не означает физическую печать.
+
+## Сканер
+
+Добавлена поддержка сетевого сканирования через открытый SANE-backend с профилем
+bizhub 215. Два настоящих скана A4/150 dpi (Gray и Color) получены на Fedora 44;
+Skanpage видит сканер и настройки. Windows DLL для работы не нужны.
+WSD у проверенного аппарата возвращает пустое изображение, поэтому применяется
+native TCP 4567. USB, ADF, дуплекс, A3 и 300 dpi аппаратно не подтверждены.
+
+```sh
+sh install.sh --setup-scanner --printer 192.0.2.10
+```
+
+Запускайте обычным пользователем. Нужны `cc`, `make`, `patch`, `pkg-config`,
+`scanimage` и Skanpage либо simple-scan из репозитория дистрибутива.
+Установщик с подтверждением загрузит проверенные по SHA-256 исходники SANE,
+соберёт отдельную библиотеку и добавит **«Сканер bizhub 215»** в меню.
+Системные SANE-библиотеки и CUPS не заменяются; сканирование само не запускается.
+[Подробности и удаление профиля](docs/SCANNER.md).
 
 ## Безопасность установки и удаление
 
@@ -105,7 +124,9 @@ Fedora 44 x86_64. Download a source release and run
 `sh install.sh --setup --printer YOUR_PRINTER_IP` as a regular user.
 Dependencies are installed only with confirmation. No Windows DLLs or Wine
 are needed. Other distributions and architectures require verification;
-CUPS 3, duplex, multiple copies and scanning are not supported.
+CUPS 3, duplex printing and multiple copies are not supported.
+Optional native network scanning is available;
+see [scanner setup](docs/SCANNER.md) for the verified scope.
 
 ## License
 

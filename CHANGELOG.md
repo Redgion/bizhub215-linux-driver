@@ -26,3 +26,14 @@ historical public versions or cross-distribution hardware results are claimed.
 - Use exclusive installation writes and reject unsafe installation sources.
 - Document GPL scope, reverse-engineering provenance and remaining legal limits.
 
+# 0.4.0 — native network scanner
+
+- Added a network-only bizhub 215 profile for GPL SANE magicolor 1.4.0.
+- Accounted for big-endian model identification, 13-byte settings and
+  length-checked five-byte image acknowledgements; avoided unsupported finish.
+- Added guarded user-only build/setup tools and a Skanpage menu shortcut.
+- Confirmed real A4/150 dpi Gray and RGB scans and user-visible Skanpage options.
+- Kept scan images, network addresses, device identifiers and traces private.
+- Reject zero/oversized dimensions and pixel widths exceeding the device stride.
+- Handle partial/failed socket writes with a bounded timeout and no SIGPIPE.
+

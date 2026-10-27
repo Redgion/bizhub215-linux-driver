@@ -1,4 +1,4 @@
-bizhub215-linux-driver, version 0.3.1
+bizhub215-linux-driver, version 0.4.0
 Copyright (C) 2026 bizhub215-linux-driver contributors
 
 This project is free software under GPL-2.0-or-later. It is supplied without
@@ -11,3 +11,11 @@ JBIG-KIT source and license: https://www.cl.cam.ac.uk/~mgk25/jbigkit/
 Konica Minolta and bizhub are trademarks of their respective owners.
 This project is not affiliated with or endorsed by Konica Minolta.
 No proprietary Windows driver binaries or Windows source code are included.
+
+Optional scanner support builds SANE magicolor 1.4.0 from its official source
+archive and applies our profile patch. That upstream component is GPL-2.0-only,
+copyright Reinhold Kainhofer and other SANE contributors, based on epson2 and
+earlier SANE work. Its original notices and COPYING remain in the downloaded
+source. The corresponding original source and our patch are needed if anyone
+redistributes a built scanner library. No SANE scanner binary is bundled in
+this project's source archive.

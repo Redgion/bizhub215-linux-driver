@@ -165,10 +165,38 @@ def elevate(command):
     raise ValueError("sudo/pkexec missing; ask your administrator to run the printed system command")
 
 
+def setup_scanner(printer):
+    if os.geteuid() == 0:
+        raise ValueError("configure the scanner as your normal desktop user")
+    if not printer:
+        raise ValueError("--setup-scanner requires --printer with the scanner IPv4 address")
+    ipaddress.IPv4Address(printer)
+    from km215_scan import setup as scanner_setup
+    from build_scanner import build as scanner_build
+    import hashlib
+    cache = Path(os.environ.get("XDG_CACHE_HOME", str(Path.home() / ".cache"))) / "bizhub215-scanner"
+    manifest = cache / "manifest.json"
+    print("Scanner setup uses a private SANE backend and user menu entry; it does not change CUPS.")
+    print("Needs cc, make, patch, pkg-config, scanimage and Skanpage or simple-scan.")
+    if not manifest.exists():
+        print("Downloads checksum-pinned official GPL SANE 1.4.0 source and builds only its network backend.")
+        if input("Build this optional scanner backend? [y/N] ").lower() != "y":
+            return
+        scanner_build(destination=cache)
+    record = json.loads(manifest.read_text())
+    library = Path(record["library"])
+    if (hashlib.sha256(library.read_bytes()).hexdigest() != record["library_sha256"] or
+        hashlib.sha256((ROOT / "scanner/sane-1.4.0-bizhub215.patch").read_bytes()).hexdigest() != record["patch_sha256"]):
+        raise ValueError("scanner build differs from this source; preserve and rebuild its cache deliberately")
+    if input("Add a private scanner profile and menu shortcut? [y/N] ").lower() == "y":
+        scanner_setup(printer, library)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--setup", action="store_true", help="guided dependencies, native build, installation and optional queue")
+    mode.add_argument("--setup-scanner", action="store_true", help="build a private native scanner backend and menu shortcut")
     mode.add_argument("--install-system", action="store_true")
     mode.add_argument("--uninstall-system", action="store_true")
     mode.add_argument("--stage", type=Path)
@@ -176,7 +204,9 @@ def main():
     args = parser.parse_args()
     if args.printer:
         address = ipaddress.ip_address(args.printer)
-    if args.stage:
+    if args.setup_scanner:
+        setup_scanner(args.printer)
+    elif args.stage:
         prefix = args.stage.absolute()
         if prefix == Path("/"):
             raise ValueError("use --install-system for system installation")
@@ -224,6 +254,7 @@ def main():
     else:
         print("bizhub215-linux-driver", (ROOT / "VERSION").read_text().strip())
         print("Guided install: sh install.sh --setup [--printer PRINTER_IP]")
+        print("Optional scanner: sh install.sh --setup-scanner --printer PRINTER_IP")
         print("Native build: make test; stage: sh install.sh --stage PATH")
         deps = dependencies()
         print("Dependencies:", " ".join(deps) if deps else "C compiler, make, Python>=3.8, Ghostscript, CUPS 2.x development files, JBIG-KIT development files")

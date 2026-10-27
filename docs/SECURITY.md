@@ -45,3 +45,19 @@ anonymous hosting. Third-party license notices must not be stripped for privacy.
 Use a GitHub noreply email for future commits, including API-created commits.
 Rewriting branches/tags cannot revoke old downloads, clones, forks or cached
 commit URLs. [GitHub documents these limits](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository).
+
+## Optional scanner
+
+The isolated SANE profile uses TCP 4567 without authentication or encryption;
+keep it on a trusted LAN. Treat replies as untrusted: reject zero or excessive
+image dimensions, pixel widths larger than the device stride, images above
+128 MiB, short acknowledgements and failed/partial network transfers. Socket
+reads and writes have timeouts; this is not a total scan deadline or a sandbox.
+The GUI and upstream SANE code still process device data in the user's process.
+
+Builds run without root from official SANE source pinned by SHA-256; archive
+paths, entry types and expanded size are checked before extraction. Setup
+creates an isolated per-user backend/profile with private address permissions
+and refuses existing files/symlink destinations. It does not install a daemon,
+modify system SANE/CUPS, or automatically acquire or upload an image. Scans,
+logs and user profiles are excluded from release archives and CI fixtures.

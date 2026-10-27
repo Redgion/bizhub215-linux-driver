@@ -7,15 +7,20 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - run: sudo apt-get update && sudo apt-get install -y build-essential python3 ghostscript cups libcups2-dev libjbig-dev
-      - run: make test
+      - run: sudo apt-get update && sudo apt-get install -y build-essential python3 ghostscript cups libcups2-dev libjbig-dev patch pkg-config sane-utils
+      - run: python3 tools/build_scanner.py --build > /tmp/scanner-build.log 2>&1 || { tail -n 80 /tmp/scanner-build.log; exit 1; }
+      - run: KM215_SCANNER_LIBRARY="$PWD/build/scanner/compile/backend/.libs/libsane-magicolor.so.1.4.0" make test
       - run: cupstestppd -W filters cups/KonicaMinolta-bizhub215-custom.ppd
       - run: python3 tools/build_release.py
   fedora:
     runs-on: ubuntu-24.04
     container: fedora:44
     steps:
-      - run: dnf install -y git gcc make python3 ghostscript cups cups-devel jbigkit-devel
+      - run: dnf install -y git gcc make python3 ghostscript cups cups-devel jbigkit-devel patch pkgconf-pkg-config sane-backends
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-      - run: make test
+      - name: Build and test as an unprivileged user
+        run: |
+          useradd -u 1001 -m builder
+          chown -R builder:builder "$GITHUB_WORKSPACE"
+          runuser -u builder -- sh -c 'python3 tools/build_scanner.py --build > /tmp/scanner-build.log 2>&1 || { tail -n 80 /tmp/scanner-build.log; exit 1; }; KM215_SCANNER_LIBRARY="$PWD/build/scanner/compile/backend/.libs/libsane-magicolor.so.1.4.0" make test'
       - run: cupstestppd -W filters cups/KonicaMinolta-bizhub215-custom.ppd

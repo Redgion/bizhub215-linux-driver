@@ -1,0 +1,188 @@
+--- a/backend/magicolor.c
++++ b/backend/magicolor.c
+@@ -103,6 +103,7 @@
+  *          |     |     |     |     |     |     |     |     |     |     |     |     |     |     |
+ */
+ static struct MagicolorCmd magicolor_cmd[] = {
++  {"bizhub215", CMD, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x12, NET, 0x00, 0x01, 0x02, 0x03},
+   {"mc1690mf", CMD, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x12, NET, 0x00, 0x01, 0x02, 0x03},
+   {"mc4690mf", CMD, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x12, NET, 0x00, 0x01, 0x02, 0x03},
+   {"es2323am", CMD, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x12, NET, 0x00, 0x01, 0x02, 0x03},
+@@ -114,6 +115,20 @@
+ static SANE_Int estudio_default_resolutions[] = {150, 200, 300, 400, 600};
+ 
+ static struct MagicolorCap magicolor_cap[] = {
++
++  /* bizhub 215: explicit network configuration only; no USB/ADF claim.
++   * Start with 150/300 dpi and flatbed, using the documented 03/04 protocol. */
++  {
++      0x20cb, "bizhub215", "bizhub 215", "",
++      -1, 0x85,
++      600, {150, 300, 0}, magicolor_default_resolutions, 2,
++      8, magicolor_default_depths,
++      {1, 9, 0},
++      {0, SANE_FIX(297.0), 0}, {0, SANE_FIX(420.0), 0},
++      SANE_FALSE, SANE_FALSE,
++      {0, 0, 0}, {0, 0, 0},
++  },
++
+ 
+   /* KONICA MINOLTA magicolor 1690MF, USB ID 0x123b:2089 */
+   {
+@@ -159,6 +174,7 @@
+ static int MC_Request_Timeout = 5000;
+ 
+ #define ESTUDIO_DEVICE(s) ((s)->hw->cap->id == 0x8056)
++#define BIZHUB215_DEVICE(s) ((s)->hw->cap->id == 0x20cb)
+ 
+ /****************************************************************************
+  *   General configuration parameter definitions
+@@ -295,11 +311,17 @@
+ 			      const unsigned char *buf, size_t buf_size,
+ 			      SANE_Status *status)
+ {
+-	sanei_tcp_write(s->fd, buf, buf_size);
+-	/* TODO: Check whether sending failed... */
+-
++	size_t written = 0;
++	while (written < buf_size) {
++		ssize_t count = send(s->fd, buf + written, buf_size - written, MSG_NOSIGNAL);
++		if (count <= 0) {
++			*status = SANE_STATUS_IO_ERROR;
++			return written;
++		}
++		written += count;
++	}
+ 	*status = SANE_STATUS_GOOD;
+-	return buf_size;
++	return written;
+ }
+ 
+ static int
+@@ -318,7 +340,9 @@
+ 		buf_size = len;
+ 	if (buf_size)
+ 		memcpy(new_buf, buf, buf_size);
+-	return sanei_magicolor_net_write_raw (s, new_buf, len, status);
++	int written = sanei_magicolor_net_write_raw (s, new_buf, len, status);
++	free(new_buf);
++	return written;
+ }
+ 
+ static SANE_Status
+@@ -335,6 +359,7 @@
+ 	tv.tv_usec = 0;
+ 
+ 	setsockopt(s->fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&tv,  sizeof(tv));
++	setsockopt(s->fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&tv, sizeof(tv));
+ 
+ 	DBG(1, "%s\n", __func__);
+ 
+@@ -357,7 +382,7 @@
+ 	buf[1] = cmd->net_lock;
+ 	buf[2] = 0x00;
+ 	/* Copy the device's USB id to bytes 3-4: */
+-	if (ESTUDIO_DEVICE(s)) {
++	if (ESTUDIO_DEVICE(s) || BIZHUB215_DEVICE(s)) {
+ 		buf[3] = (s->hw->cap->id >> 8) & 0xff;
+ 		buf[4] = s->hw->cap->id & 0xff;
+ 	} else {
+@@ -928,7 +953,7 @@
+ 	dump_hex_buffer_dense (127, param, 0x11);
+ 
+ 	buflen = mc_create_buffer (s, s->hw->cmd->scanner_cmd, s->hw->cmd->set_scan_parameters,
+-				   &buf, param, 0x11, &status);
++				   &buf, param, BIZHUB215_DEVICE(s) ? 13 : 0x11, &status);
+ 	if (buflen <= 0 ) {
+ 		return SANE_STATUS_NO_MEM;
+ 	} else if (status != SANE_STATUS_GOOD) {
+@@ -1015,12 +1040,15 @@
+ 	 * because a color scan needs >5 seconds to initialize. */
+ 	MC_Request_Timeout = MC_Scan_Data_Timeout;
+ 
+-	if (ESTUDIO_DEVICE(s)) {
++	if (ESTUDIO_DEVICE(s) || BIZHUB215_DEVICE(s)) {
+ 		/* e-STUDIO device returns 5-bytes of ack data here
+ 		 * ignore it to not mess up image buffer */
+ 		unsigned char ack[5];
+ 
+ 		status = mc_txrx (s, txbuf, txbuflen, ack, sizeof(ack));
++		if (status == SANE_STATUS_GOOD && BIZHUB215_DEVICE(s) &&
++		    (ack[0] != 0 || ((size_t)ack[1] | ((size_t)ack[2] << 8)) != len))
++			status = SANE_STATUS_IO_ERROR;
+ 		if (status == SANE_STATUS_GOOD) {
+ 			mc_recv (s, buf, len, &status);
+ 		}
+@@ -1280,6 +1308,14 @@
+ 		return status;
+ 	}
+ 
++	/* Bound untrusted dimensions before byte-size multiplication. */
++	if (scan_pixels_per_line <= 0 || s->params.pixels_per_line <= 0 ||
++	    s->params.lines <= 0 || s->params.pixels_per_line > scan_pixels_per_line ||
++	    scan_pixels_per_line > 8192 || s->params.pixels_per_line > 8192 ||
++	    s->params.lines > 8192 ||
++	    (unsigned long) scan_pixels_per_line * s->params.lines * 3 > 128UL * 1024 * 1024)
++		return SANE_STATUS_INVAL;
++
+ 	/* Calculate how many bytes are really used per line */
+ 	s->params.bytes_per_line = ceil (s->params.pixels_per_line * s->params.depth / 8.0);
+ 	if (s->val[OPT_MODE].w == MODE_COLOR)
+@@ -1339,7 +1375,7 @@
+ 	s->buf = s->end = s->ptr = NULL;
+ 
+ 	/* TODO: Any magicolor command for "scan finished"? */
+-	if (!ESTUDIO_DEVICE(s))
++	if (!ESTUDIO_DEVICE(s) && !BIZHUB215_DEVICE(s))
+ 		status = cmd_finish_scan (s);
+ 
+ 	status = cmd_request_error(s);
+@@ -2243,7 +2279,7 @@
+ 			if (strncmp(name, "autodiscovery", 13) == 0) {
+ 				DBG (50, "%s: Initiating network autodiscovervy via SNMP\n", __func__);
+ 				mc_network_discovery(NULL);
+-			} else if (sscanf(name, "%s %x", IP, &model) == 2) {
++			} else if (sscanf(name, "%1023s %x", IP, &model) == 2) {
+ 				DBG(50, "%s: Using network device on IP %s, forcing model 0x%x\n", __func__, IP, model);
+ 				attach_one_net(IP, model);
+ 			} else {
+@@ -2432,7 +2468,7 @@
+ 	s->opt[OPT_MODE].size = max_string_size(mode_list);
+ 	s->opt[OPT_MODE].constraint_type = SANE_CONSTRAINT_STRING_LIST;
+ 	s->opt[OPT_MODE].constraint.string_list = mode_list;
+-	s->val[OPT_MODE].w = 0;	/* Binary */
++	s->val[OPT_MODE].w = BIZHUB215_DEVICE(s) ? MODE_GRAY : 0;
+ 
+ 	/* bit depth */
+ 	s->opt[OPT_BIT_DEPTH].name = SANE_NAME_BIT_DEPTH;
+@@ -2541,7 +2577,7 @@
+ 	s->opt[OPT_BR_X].unit = SANE_UNIT_MM;
+ 	s->opt[OPT_BR_X].constraint_type = SANE_CONSTRAINT_RANGE;
+ 	s->opt[OPT_BR_X].constraint.range = s->hw->x_range;
+-	s->val[OPT_BR_X].w = s->hw->x_range->max;
++	s->val[OPT_BR_X].w = BIZHUB215_DEVICE(s) ? SANE_FIX(210.0) : s->hw->x_range->max;
+ 
+ 	/* bottom-right y */
+ 	s->opt[OPT_BR_Y].name = SANE_NAME_SCAN_BR_Y;
+@@ -2551,7 +2587,7 @@
+ 	s->opt[OPT_BR_Y].unit = SANE_UNIT_MM;
+ 	s->opt[OPT_BR_Y].constraint_type = SANE_CONSTRAINT_RANGE;
+ 	s->opt[OPT_BR_Y].constraint.range = s->hw->y_range;
+-	s->val[OPT_BR_Y].w = s->hw->y_range->max;
++	s->val[OPT_BR_Y].w = BIZHUB215_DEVICE(s) ? SANE_FIX(297.0) : s->hw->y_range->max;
+ 
+ 	return SANE_STATUS_GOOD;
+ }
+@@ -2791,10 +2827,10 @@
+ 		s->val[OPT_TL_Y].w = s->hw->y_range->min;
+ 
+ 	if (s->val[OPT_BR_X].w > s->hw->x_range->max || force_max)
+-		s->val[OPT_BR_X].w = s->hw->x_range->max;
++		s->val[OPT_BR_X].w = BIZHUB215_DEVICE(s) ? SANE_FIX(210.0) : s->hw->x_range->max;
+ 
+ 	if (s->val[OPT_BR_Y].w > s->hw->y_range->max || force_max)
+-		s->val[OPT_BR_Y].w = s->hw->y_range->max;
++		s->val[OPT_BR_Y].w = BIZHUB215_DEVICE(s) ? SANE_FIX(297.0) : s->hw->y_range->max;
+ 
+ }
+ 
